@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>百分比計算器</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>計算結果</h1>
+        <div class="calculator">
+            <input type="number" 
+                   id="inputNumber" 
+                   placeholder="請輸入數字">
+            <div class="result">
+                <p>計算結果：<span id="result">0</span></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 獲取輸入框元素
+        const inputElement = document.getElementById('inputNumber');
+        
+        // 添加事件監聽器
+        inputElement.addEventListener('input', function() {
+            const number = parseFloat(this.value);
+            
+            if (isNaN(number)) {
+                document.getElementById('result').textContent = '0';
+                return;
+            }
+
+            // 計算 7.5%
+            const percentage = number * 0.075;
+            // 以20為單位無條件進位
+            const rounded = Math.ceil(percentage / 20) * 20;
+            
+            document.getElementById('result').textContent = rounded;
+        });
+    </script>
+</body>
+</html> 
