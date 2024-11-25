@@ -8,37 +8,67 @@
 </head>
 <body>
     <div class="container">
-        <h1>計算結果</h1>
+        <h1>計算機</h1>
         <div class="calculator">
+            <div class="result">
+                <p>計算結果：<span id="result">0</span></p>
+            </div>
             <input type="number" 
                    id="inputNumber" 
                    placeholder="請輸入數字">
-            <div class="result">
-                <p>計算結果：<span id="result">0</span></p>
+            <div class="numpad">
+                <button class="num-btn" data-num="7">7</button>
+                <button class="num-btn" data-num="8">8</button>
+                <button class="num-btn" data-num="9">9</button>
+                <button class="num-btn" data-num="4">4</button>
+                <button class="num-btn" data-num="5">5</button>
+                <button class="num-btn" data-num="6">6</button>
+                <button class="num-btn" data-num="1">1</button>
+                <button class="num-btn" data-num="2">2</button>
+                <button class="num-btn" data-num="3">3</button>
+                <button class="num-btn" data-num="0">0</button>
+                <button class="num-btn" data-num="00">00</button>
+                <button class="clear-btn">清除</button>
             </div>
         </div>
     </div>
 
     <script>
-        // 獲取輸入框元素
         const inputElement = document.getElementById('inputNumber');
+        const numButtons = document.querySelectorAll('.num-btn');
+        const clearButton = document.querySelector('.clear-btn');
         
-        // 添加事件監聽器
-        inputElement.addEventListener('input', function() {
-            const number = parseFloat(this.value);
+        // 數字按鈕點擊事件
+        numButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const num = button.getAttribute('data-num');
+                inputElement.value = inputElement.value + num;
+                calculateResult();
+            });
+        });
+
+        // 清除按鈕點擊事件
+        clearButton.addEventListener('click', () => {
+            inputElement.value = '';
+            document.getElementById('result').textContent = '0';
+        });
+
+        // 輸入框輸入事件
+        inputElement.addEventListener('input', calculateResult);
+
+        function calculateResult() {
+            const number = parseFloat(inputElement.value);
             
             if (isNaN(number)) {
                 document.getElementById('result').textContent = '0';
                 return;
             }
 
-            // 計算 7.5%
             const percentage = number * 0.075;
-            // 以20為單位無條件進位
             const rounded = Math.ceil(percentage / 20) * 20;
             
             document.getElementById('result').textContent = rounded;
-        });
+        }
     </script>
 </body>
 </html> 
