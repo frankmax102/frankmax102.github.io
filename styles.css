@@ -143,4 +143,23 @@ input {
     padding-top: 1rem;
     border-top: 1px solid #eee;
 }
+
+/* 防止 iOS 上的雙擊縮放 */
+* {
+    touch-action: manipulation;
+}
+
+/* 修改按鈕樣式以改善觸控體驗 */
+.num-btn, .clear-btn, .toggle-btn {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    min-height: 44px; /* iOS 建議的最小觸控區域 */
+}
+
+/* 防止長按時出現選單 */
+.num-btn, .clear-btn, .toggle-btn {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
  
