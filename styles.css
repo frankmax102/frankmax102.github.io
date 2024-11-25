@@ -10,6 +10,7 @@ body {
 }
 
 .container {
+    position: relative;
     background-color: white;
     padding: 2rem;
     border-radius: 10px;
@@ -161,5 +162,14 @@ input {
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
+}
+
+.version {
+    position: absolute;
+    bottom: 5px;
+    right: 10px;
+    font-size: 0.7rem;
+    color: #999;
+    font-family: monospace;
 }
  
