@@ -1,202 +1,134 @@
 body {
     font-family: Arial, sans-serif;
     margin: 0;
-    padding: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
+    padding: 20px;
     background-color: #f0f0f0;
-    touch-action: manipulation;
-    -ms-touch-action: manipulation;
-    -webkit-text-size-adjust: 100%;
 }
 
 .container {
-    position: relative;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
     background-color: white;
-    padding: 2rem;
     border-radius: 10px;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    width: 90%;
-    max-width: 400px;
 }
 
 h1 {
     text-align: center;
     color: #333;
-    margin-bottom: 1rem;
+    margin-bottom: 20px;
 }
 
-.calculator {
+.player-form {
     display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
+    gap: 10px;
+    margin-bottom: 20px;
 }
 
-.result {
-    text-align: center;
-    font-size: 1.2rem;
-    margin-bottom: 1rem;
-    background-color: #f8f8f8;
-    padding: 1rem;
-    border-radius: 8px;
-}
-
-#result {
-    font-size: 4.8rem;
-    font-weight: bold;
-    color: #333;
-    display: block;
-    margin-top: 0.5rem;
-}
-
-input {
-    padding: 0.8rem;
-    font-size: 1.2rem;
+.player-form input {
+    flex: 1;
+    padding: 10px;
     border: 1px solid #ccc;
-    border-radius: 4px;
-    width: 100%;
-    box-sizing: border-box;
-    touch-action: manipulation;
-    -webkit-text-size-adjust: 100%;
-    font-size: 16px;
+    border-radius: 5px;
 }
 
-.numpad {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.5rem;
-}
-
-.num-btn, .clear-btn {
-    padding: 1rem;
-    font-size: 1.5rem;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    background-color: #f8f8f8;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: rgba(0,0,0,0);
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    user-select: none;
-    min-height: 44px;
-}
-
-.num-btn:hover, .clear-btn:hover {
-    background-color: #e0e0e0;
-}
-
-.clear-btn {
-    background-color: #ff9999;
+.player-form button {
+    padding: 10px 20px;
+    background-color: #4CAF50;
     color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
 }
 
-.clear-btn:hover {
-    background-color: #ff7777;
+.player-form button:hover {
+    background-color: #45a049;
 }
 
-.percentage-input {
-    margin-top: 1rem;
-    position: relative;
-    width: 150px;
-    margin: 1rem auto 0 auto;
-    display: none;
+.player-card {
+    background-color: #f8f8f8;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #4CAF50;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.player-card h3 {
+    display: flex;
     align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
+    justify-content: space-between;
+    margin: 0 0 10px 0;
+    color: #333;
 }
 
-.percentage-input input {
-    width: 120px;
-    padding: 0.5rem;
-    font-size: 1.2rem;
-    text-align: right;
-    padding-right: 30px;
-}
-
-.percentage-symbol {
-    position: absolute;
-    right: 10px;
-    font-size: 1.2rem;
+.player-card p {
+    margin: 5px 0;
     color: #666;
 }
 
-#percentageDisplay {
-    color: #4CAF50;
-    font-weight: bold;
-}
-
-.toggle-btn {
-    display: block;
-    width: 100%;
-    padding: 0.8rem;
-    background-color: #4CAF50;
+.action-btn {
+    padding: 5px 10px;
+    margin-right: 5px;
+    background-color: #2196F3;
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 1rem;
-    transition: background-color 0.2s;
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: rgba(0,0,0,0);
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    user-select: none;
-    min-height: 44px;
+    transition: background-color 0.3s;
 }
 
-.toggle-btn:hover {
+.action-btn:hover {
+    background-color: #1e88e5;
+}
+
+.action-btn.red {
+    background-color: #f44336;
+}
+
+.action-btn.red:hover {
+    background-color: #e53935;
+}
+
+.action-btn.green {
+    background-color: #4CAF50;
+}
+
+.action-btn.green:hover {
     background-color: #45a049;
 }
 
-.toggle-btn.active {
-    background-color: #45a049;
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+.action-btn.purple {
+    background-color: #800080;
 }
 
-.percentage-settings {
-    margin-top: 2rem;
-    padding-top: 1rem;
-    border-top: 1px solid #eee;
+.action-btn.purple:hover {
+    background-color: #6a006a;
 }
 
-/* 防止 iOS 上的雙擊縮放 */
-* {
-    touch-action: manipulation;
+.buyin-record, .rebate-record {
+    font-size: 0.9em;
+    color: #2196F3;
+    margin-left: 10px;
+    cursor: pointer;
+    transition: color 0.3s;
 }
 
-/* 修改按鈕樣式以改善觸控體驗 */
-.num-btn, .clear-btn, .toggle-btn {
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-    min-height: 44px; /* iOS 建議的最小觸控區域 */
+.buyin-record:hover, .rebate-record:hover {
+    color: #1e88e5;
+    text-decoration: underline;
 }
 
-/* 防止長按時出現選單 */
-.num-btn, .clear-btn, .toggle-btn {
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    user-select: none;
+.status {
+    color: #4CAF50;
+    font-size: 0.9em;
+    margin-left: 10px;
 }
 
-.version {
-    position: absolute;
-    bottom: 5px;
-    right: 10px;
-    font-size: 0.7rem;
-    color: #999;
-    font-family: monospace;
+.header-actions {
+    display: flex;
+    gap: 5px;
+    align-items: center;
 }
-
-/* 禁用輸入框的縮放行為 */
-@media screen and (-webkit-min-device-pixel-ratio:0) { 
-    select,
-    textarea,
-    input {
-        font-size: 16px !important;
-    }
-}
- 
