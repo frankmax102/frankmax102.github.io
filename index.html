@@ -2,289 +2,109 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>德州撲克玩家帳目紀錄</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <meta name="HandheldFriendly" content="true">
+    <title>百分比計算器</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
-        <h1>德州撲克玩家帳目紀錄</h1>
-        <div class="player-form">
-            <input type="text" id="playerName" placeholder="姓名">
-            <input type="number" id="buyIn" placeholder="總抓碼"> <!-- 修改为总抓码 -->
-            <button onclick="addPlayer()">新增玩家</button>
-        </div>
-        <button class="action-btn red" onclick="clearAllData()">清除所有資料</button> <!-- 新增清除資料按鈕 -->
-        <div class="player-list" id="playerList">
-            <!-- 玩家資料會動態插入這裡 -->
+        <h1>計算 <span id="percentageDisplay">7.5</span>%</h1>
+        <div class="calculator">
+            <div class="result">
+                <p>計算結果：<span id="result">0</span></p>
+            </div>
+            <input type="number" 
+                   id="inputNumber" 
+                   placeholder="請輸入數字">
+            <div class="numpad">
+                <button class="num-btn" data-num="7">7</button>
+                <button class="num-btn" data-num="8">8</button>
+                <button class="num-btn" data-num="9">9</button>
+                <button class="num-btn" data-num="4">4</button>
+                <button class="num-btn" data-num="5">5</button>
+                <button class="num-btn" data-num="6">6</button>
+                <button class="num-btn" data-num="1">1</button>
+                <button class="num-btn" data-num="2">2</button>
+                <button class="num-btn" data-num="3">3</button>
+                <button class="num-btn" data-num="0">0</button>
+                <button class="num-btn" data-num="00">00</button>
+                <button class="clear-btn">清除</button>
+            </div>
+            <div class="percentage-settings">
+                <button id="togglePercentage" class="toggle-btn">顯示/隱藏百分比設定</button>
+                <div class="percentage-input" style="display: none;">
+                    <input type="number" 
+                           id="percentageInput" 
+                           value="7.5" 
+                           step="0.1" 
+                           min="0" 
+                           max="100">
+                    <span class="percentage-symbol">%</span>
+                </div>
+            </div>
+            <div class="version">v1.0.1</div>
         </div>
     </div>
 
     <script>
-        let players = [];
-        let intervalId;
+        const inputElement = document.getElementById('inputNumber');
+        const percentageInput = document.getElementById('percentageInput');
+        const percentageDisplay = document.getElementById('percentageDisplay');
+        const numButtons = document.querySelectorAll('.num-btn');
+        const clearButton = document.querySelector('.clear-btn');
+        
+        // 新增切換按鈕功能
+        const toggleButton = document.getElementById('togglePercentage');
+        const percentageInputDiv = document.querySelector('.percentage-input');
+        
+        toggleButton.addEventListener('click', () => {
+            const isHidden = percentageInputDiv.style.display === 'none';
+            percentageInputDiv.style.display = isHidden ? 'flex' : 'none';
+            toggleButton.classList.toggle('active');
+        });
 
-        // 从 localStorage 加载数据
-        function loadData() {
-            const savedData = localStorage.getItem('pokerPlayers');
-            if (savedData) {
-                players = JSON.parse(savedData);
-                players.forEach(player => {
-                    player.startTime = new Date(player.startTime); // 确保 startTime 是日期对象
-                });
+        // 百分比輸入事件
+        percentageInput.addEventListener('input', () => {
+            const percentage = parseFloat(percentageInput.value);
+            if (!isNaN(percentage)) {
+                percentageDisplay.textContent = percentage.toFixed(1);
+                calculateResult();
             }
-            updatePlayerList();
-        }
+        });
 
-        // 保存数据到 localStorage
-        function saveData() {
-            localStorage.setItem('pokerPlayers', JSON.stringify(players));
-        }
+        // 數字按鈕點擊事件
+        numButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const num = button.getAttribute('data-num');
+                inputElement.value = inputElement.value + num;
+                calculateResult();
+            });
+        });
 
-        function addPlayer() {
-            const name = document.getElementById('playerName').value;
-            const buyIn = parseInt(document.getElementById('buyIn').value);
+        // 清除按鈕點擊事件
+        clearButton.addEventListener('click', () => {
+            inputElement.value = '';
+            document.getElementById('result').textContent = '0';
+        });
+
+        // 輸入框輸入事件
+        inputElement.addEventListener('input', calculateResult);
+
+        function calculateResult() {
+            const number = parseFloat(inputElement.value);
+            const percentage = parseFloat(percentageInput.value);
             
-            if (!name || isNaN(buyIn)) {
-                alert('請填寫玩家姓名和總抓碼');
+            if (isNaN(number) || isNaN(percentage)) {
+                document.getElementById('result').textContent = '0';
                 return;
             }
 
-            const player = {
-                id: Date.now(),
-                name: name,
-                note: '', // 初始化备注为空
-                buyIn: buyIn,
-                buyInTime: new Date(),
-                totalTime: 0, // 初始化为0
-                isPlaying: true, // 默认状态为入座
-                startTime: new Date(), // 当前时间
-                additionalBuyIns: [],
-                cashOut: 0, // 将解码的默认值设置为0
-                rebates: []
-            };
-
-            players.push(player);
-            updatePlayerList();
-            clearForm();
-            saveData(); // 保存数据
-        }
-
-        function updatePlayerList() {
-            const list = document.getElementById('playerList');
-            list.innerHTML = '';
-
-            players.forEach(player => {
-                const playerElement = document.createElement('div');
-                playerElement.className = 'player-card';
-                
-                const totalBuyIn = getTotalBuyIn(player);
-                const totalRebate = player.rebates.reduce((sum, rebate) => sum + rebate.amount, 0);
-                const profit = player.cashOut - totalBuyIn + totalRebate; // 盈亏计算
-
-                playerElement.innerHTML = `
-                    <h3>${player.name} 
-                        <span class="status">${player.isPlaying ? '(已入座)' : ''}</span>
-                        <button class="action-btn ${player.isPlaying ? 'red' : 'green'}" onclick="togglePlay(${player.id})">
-                            ${player.isPlaying ? '站起' : '坐下'}
-                        </button>
-                    </h3>
-                    <p class="note">備註: <input type="text" value="${player.note}" onchange="updateNote(${player.id}, this.value)" placeholder="備註"></p> <!-- 备注输入框 -->
-                    <p class="total-buyin" style="color: green;">總抓碼: $${totalBuyIn} (${formatDate(player.buyInTime)})</p>
-                    <p class="cash-out" style="color: brown;">解碼: ${player.cashOut !== null ? `$${player.cashOut} (盈虧: $${profit})` : '尚未解碼'}</p>
-                    <p id="playTime-${player.id}">入座時間: ${formatPlayTime(player)}</p>
-                    <div class="header-actions">
-                        <button class="action-btn purple" onclick="addRebate(${player.id})">退水</button>
-                        <button class="action-btn" onclick="addBuyIn(${player.id})">補碼</button>
-                        <button class="action-btn red" onclick="cashOut(${player.id})">解碼</button> <!-- 确保解码按钮存在 -->
-                    </div>
-                    <div class="buyin-records">
-                        ${player.additionalBuyIns.map((buyIn, index) => 
-                            `<p class="buyin-record" onclick="editBuyIn(${player.id}, ${index}, ${buyIn.amount})">補碼: $${buyIn.amount} (${formatDate(buyIn.time)})</p>`
-                        ).join('')}
-                    </div>
-                    <div class="rebate-records">
-                        ${player.rebates.map((rebate, index) => 
-                            `<p class="rebate-record" onclick="editRebate(${player.id}, ${index}, ${rebate.amount})">退水: $${rebate.amount} (${formatDate(rebate.time)})</p>`
-                        ).join('')}
-                    </div>
-                `;
-
-                list.appendChild(playerElement);
-            });
-        }
-
-        function updateNote(playerId, note) {
-            const player = players.find(p => p.id === playerId);
-            if (player) {
-                player.note = note; // 更新备注
-                saveData(); // 保存数据
-            }
-        }
-
-        function formatDate(date) {
-            return new Date(date).toLocaleString('zh-TW', {
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false
-            });
-        }
-
-        function formatPlayTime(player) {
-            const currentTime = player.isPlaying ? 
-                Math.floor((new Date() - player.startTime) / 1000) + player.totalTime :
-                player.totalTime;
+            const calculatedValue = number * (percentage / 100);
+            const rounded = Math.ceil(calculatedValue / 20) * 20;
             
-            const hours = Math.floor(currentTime / 3600);
-            const minutes = Math.floor((currentTime % 3600) / 60);
-            const seconds = Math.floor(currentTime % 60);
-
-            return `${hours}時${minutes}分${seconds}秒`;
-        }
-
-        function getTotalBuyIn(player) {
-            return player.buyIn + player.additionalBuyIns.reduce((total, buyIn) => total + buyIn.amount, 0);
-        }
-
-        function addBuyIn(playerId) {
-            const amount = parseInt(prompt('請輸入追加抓碼金額'));
-            if (!isNaN(amount)) {
-                const player = players.find(p => p.id === playerId);
-                if (player) {
-                    player.additionalBuyIns.push({
-                        amount: amount,
-                        time: new Date()
-                    });
-                    updatePlayerList();
-                    saveData(); // 保存数据
-                }
-            } else {
-                alert('請輸入有效的數字');
-            }
-        }
-
-        function editBuyIn(playerId, index, currentAmount) {
-            const newAmount = prompt('修改補碼金額:', currentAmount);
-            if (newAmount && !isNaN(newAmount)) {
-                const player = players.find(p => p.id === playerId);
-                if (player && player.additionalBuyIns[index]) {
-                    player.additionalBuyIns[index].amount = parseInt(newAmount);
-                    updatePlayerList();
-                    saveData(); // 保存数据
-                }
-            }
-        }
-
-        function cashOut(playerId) {
-            const amount = parseInt(prompt('請輸入解碼金額'));
-            if (!isNaN(amount)) {
-                const player = players.find(p => p.id === playerId);
-                if (player) {
-                    player.cashOut = amount;
-                    if (player.isPlaying) {
-                        player.totalTime += Math.floor((new Date() - player.startTime) / 1000);
-                        player.isPlaying = false;
-                    }
-                    updatePlayerList();
-                    saveData(); // 保存数据
-                }
-            } else {
-                alert('請輸入有效的數字');
-            }
-        }
-
-        function togglePlay(playerId) {
-            const player = players.find(p => p.id === playerId);
-            if (player) {
-                if (player.isPlaying) {
-                    // 站起时，计算入座时间并保存
-                    player.totalTime += Math.floor((new Date() - player.startTime) / 1000);
-                } else {
-                    // 坐下时，重新开始计时
-                    player.startTime = new Date();
-                }
-                player.isPlaying = !player.isPlaying;
-                updatePlayerList();
-                saveData(); // 保存数据
-            }
-        }
-
-        function addRebate(playerId) {
-            const amount = parseInt(prompt('請輸入退水金額'));
-            if (!isNaN(amount)) {
-                const player = players.find(p => p.id === playerId);
-                if (player) {
-                    player.rebates.push({
-                        amount: amount,
-                        time: new Date()
-                    });
-                    updatePlayerList();
-                    saveData(); // 保存数据
-                }
-            } else {
-                alert('請輸入有效的數字');
-            }
-        }
-
-        function editRebate(playerId, index, currentAmount) {
-            const newAmount = prompt('修改退水金額:', currentAmount);
-            if (newAmount && !isNaN(newAmount)) {
-                const player = players.find(p => p.id === playerId);
-                if (player && player.rebates[index]) {
-                    player.rebates[index].amount = parseInt(newAmount);
-                    updatePlayerList();
-                    saveData(); // 保存数据
-                }
-            }
-        }
-
-        function clearAllData() {
-            if (confirm('確定要清除所有資料嗎？')) {
-                players = [];
-                localStorage.removeItem('pokerPlayers'); // 清除 localStorage
-                updatePlayerList();
-            }
-        }
-
-        function clearForm() {
-            document.getElementById('playerName').value = '';
-            document.getElementById('buyIn').value = '';
-        }
-
-        // 每秒更新玩家的入座時間
-        intervalId = setInterval(() => {
-            players.forEach(player => {
-                if (player.isPlaying) {
-                    const playTimeElement = document.getElementById(`playTime-${player.id}`);
-                    if (playTimeElement) {
-                        playTimeElement.textContent = `入座時間: ${formatPlayTime(player)}`;
-                    }
-                }
-            });
-        }, 1000);
-
-        // 页面加载时读取数据
-        window.onload = loadData;
-
-        // 从 localStorage 加载数据
-        function loadData() {
-            const savedData = localStorage.getItem('pokerPlayers');
-            if (savedData) {
-                players = JSON.parse(savedData);
-                players.forEach(player => {
-                    player.startTime = new Date(player.startTime); // 确保 startTime 是日期对象
-                });
-            }
-            updatePlayerList();
-        }
-
-        // 保存数据到 localStorage
-        function saveData() {
-            localStorage.setItem('pokerPlayers', JSON.stringify(players));
+            document.getElementById('result').textContent = rounded;
         }
     </script>
 </body>
-</html>
+</html> 
