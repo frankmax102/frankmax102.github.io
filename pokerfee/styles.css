@@ -31,6 +31,8 @@ h1 {
     padding: 10px;
     border: 1px solid #ccc;
     border-radius: 5px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .player-form button {
@@ -131,4 +133,31 @@ h1 {
     display: flex;
     gap: 5px;
     align-items: center;
+}
+
+.container {
+    padding: 20px;
+}
+
+input[type="number"] {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+.summary-link {
+    text-align: right;
+    margin-bottom: 20px;
+}
+
+.summary-link a {
+    color: #2196F3;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.summary-link a:hover {
+    text-decoration: underline;
 }

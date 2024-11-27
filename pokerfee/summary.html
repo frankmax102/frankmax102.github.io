@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>德州撲克玩家總結</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <a href="index.html">返回玩家帳目紀錄</a>
+        <h1>德州撲克玩家總結</h1>
+        <div>
+            <p>玩家總抓碼: <span id="totalBuyIn">0</span></p>
+            <p>玩家總解碼: <span id="totalCashOut">0</span></p>
+            <p>玩家總退水: <span id="totalRebate">0</span></p>
+
+            <!-- 水錢輸入 -->
+            <p>水錢總和: <span id="totalWaterMoney">0</span></p>
+            <p>
+                <input type="number" id="waterMoneyInput" placeholder="輸入水錢">
+                <button onclick="addWaterMoney()">新增水錢</button>
+            </p>
+            <div id="waterMoneyList"></div>
+
+            <!-- 保險輸入 -->
+            <p>保險總和: <span id="totalInsurance">0</span></p>
+            <p>
+                <input type="number" id="insuranceInput" placeholder="輸入保險">
+                <button onclick="addInsurance()">新增保險</button>
+            </p>
+            <div id="insuranceList"></div>
+
+            <!-- 開銷輸入 -->
+            <p>開銷總和: <span id="totalExpenses">0</span></p>
+            <p>
+                <input type="number" id="expensesInput" placeholder="輸入開銷">
+                <button onclick="addExpenses()">新增開銷</button>
+            </p>
+            <div id="expensesList"></div>
+
+            <p>荷官薪水: <input type="number" id="dealerSalary" placeholder="輸入荷官薪水" onchange="updateCalculations()"></p>
+            <p>荷官小費: <input type="number" id="dealerTip" placeholder="輸入荷官小費" onchange="updateCalculations()"></p>
+            <p>荷官(薪水+小費): <span id="totalDealerIncome">0</span></p>
+            <p>銀行: <input type="number" id="bank" placeholder="輸入銀行" onchange="updateCalculations()"></p>
+            <p>服務: <input type="number" id="service" placeholder="輸入服務" onchange="updateCalculations()"></p>
+            <p>場地: <input type="number" id="venue" placeholder="輸入場地" onchange="updateCalculations()"></p>
+            <p>利潤: <span id="profit">0</span> (<span id="profitCalculation">0</span>)</p>
+            <p>天地帳核對: <span id="accountCheck">0</span> (<span id="accountCheckCalculation">0</span>)</p>
+
+            <!-- 新增清除資料按鈕 -->
+            <button onclick="clearAllData()">清除所有資料</button>
+        </div>
+    </div>
+
+    <script>
+        let players = [];
+        let waterMoneyEntries = [];
+        let insuranceEntries = [];
+        let expensesEntries = [];
+
+        function loadData() {
+            const savedData = localStorage.getItem('pokerPlayers'); // 從 pokerPlayers 中讀取
+            if (savedData) {
+                players = JSON.parse(savedData);
+                updateSummary(); // 更新摘要以顯示玩家資料
+            }
+
+            const summaryData = localStorage.getItem('summaryData'); // 從 summaryData 中讀取
+            if (summaryData) {
+                const data = JSON.parse(summaryData);
+                waterMoneyEntries = data.waterMoneyEntries || [];
+                insuranceEntries = data.insuranceEntries || [];
+                expensesEntries = data.expensesEntries || [];
+                
+                updateWaterMoneyList();
+                updateInsuranceList();
+                updateExpensesList();
+            }
+        }
+
+        function saveData() {
+            const data = {
+                waterMoneyEntries: waterMoneyEntries,
+                insuranceEntries: insuranceEntries,
+                expensesEntries: expensesEntries,
+                players: players // 如果需要儲存玩家資料
+            };
+            localStorage.setItem('summaryData', JSON.stringify(data));
+        }
+
+        function clearAllData() {
+            // 顯示確認視窗
+            if (confirm('確定要清除所有資料嗎？')) {
+                // 清空所有資料
+                waterMoneyEntries = [];
+                insuranceEntries = [];
+                expensesEntries = [];
+                players = [];
+                saveData(); // 儲存清空後的資料
+                updateWaterMoneyList();
+                updateInsuranceList();
+                updateExpensesList();
+                updateSummary(); // 更新摘要以顯示清空後的資料
+            }
+        }
+
+        function updateSummary() {
+            const totalBuyIn = players.reduce((sum, player) => {
+                return sum + player.buyIn + player.additionalBuyIns.reduce((total, buyIn) => total + buyIn.amount, 0);
+            }, 0);
+
+            const totalCashOut = players.reduce((sum, player) => {
+                return sum + player.cashOut;
+            }, 0);
+
+            const totalRebate = players.reduce((sum, player) => {
+                return sum + player.rebates.reduce((total, rebate) => total + rebate.amount, 0);
+            }, 0);
+
+            // 更新顯示
+            document.getElementById('totalBuyIn').textContent = totalBuyIn;
+            document.getElementById('totalCashOut').textContent = totalCashOut;
+            document.getElementById('totalRebate').textContent = totalRebate;
+
+            updateCalculations(); // 在更新摘要後立即計算利潤和天地帳核對
+        }
+
+        function addWaterMoney() {
+            const amount = parseFloat(document.getElementById('waterMoneyInput').value);
+            if (!isNaN(amount)) {
+                waterMoneyEntries.push({ amount: amount, time: new Date() });
+                document.getElementById('waterMoneyInput').value = ''; // 清空輸入框
+                updateWaterMoneyList();
+                updateCalculations();
+                saveData(); // 儲存資料到 localStorage
+            } else {
+                alert('請輸入有效的水錢金額');
+            }
+        }
+
+        function addInsurance() {
+            const amount = parseFloat(document.getElementById('insuranceInput').value);
+            if (!isNaN(amount)) {
+                insuranceEntries.push({ amount: amount, time: new Date() });
+                document.getElementById('insuranceInput').value = ''; // 清空輸入框
+                updateInsuranceList();
+                updateCalculations();
+                saveData(); // 儲存資料到 localStorage
+            } else {
+                alert('請輸入有效的保險金額');
+            }
+        }
+
+        function addExpenses() {
+            const amount = parseFloat(document.getElementById('expensesInput').value);
+            if (!isNaN(amount)) {
+                expensesEntries.push({ amount: amount, time: new Date() });
+                document.getElementById('expensesInput').value = ''; // 清空輸入框
+                updateExpensesList();
+                updateCalculations();
+                saveData(); // 儲存資料到 localStorage
+            } else {
+                alert('請輸入有效的開銷金額');
+            }
+        }
+
+        function updateWaterMoneyList() {
+            const list = document.getElementById('waterMoneyList');
+            list.innerHTML = waterMoneyEntries.map((entry, index) => 
+                `<p onclick="editWaterMoney(${index})">水錢: $${entry.amount} (${formatDate(entry.time)})</p>`
+            ).join('');
+            updateTotalWaterMoney();
+        }
+
+        function updateInsuranceList() {
+            const list = document.getElementById('insuranceList');
+            list.innerHTML = insuranceEntries.map((entry, index) => 
+                `<p onclick="editInsurance(${index})">保險: $${entry.amount} (${formatDate(entry.time)})</p>`
+            ).join('');
+            updateTotalInsurance();
+        }
+
+        function updateExpensesList() {
+            const list = document.getElementById('expensesList');
+            list.innerHTML = expensesEntries.map((entry, index) => 
+                `<p onclick="editExpenses(${index})">開銷: $${entry.amount} (${formatDate(entry.time)})</p>`
+            ).join('');
+            updateTotalExpenses();
+        }
+
+        function editWaterMoney(index) {
+            const newAmount = prompt('修改水錢金額:', waterMoneyEntries[index].amount);
+            if (newAmount && !isNaN(newAmount)) {
+                waterMoneyEntries[index].amount = parseFloat(newAmount);
+                updateWaterMoneyList();
+                updateCalculations();
+                saveData(); // 儲存資料到 localStorage
+            }
+        }
+
+        function editInsurance(index) {
+            const newAmount = prompt('修改保險金額:', insuranceEntries[index].amount);
+            if (newAmount && !isNaN(newAmount)) {
+                insuranceEntries[index].amount = parseFloat(newAmount);
+                updateInsuranceList();
+                updateCalculations();
+                saveData(); // 儲存資料到 localStorage
+            }
+        }
+
+        function editExpenses(index) {
+            const newAmount = prompt('修改開銷金額:', expensesEntries[index].amount);
+            if (newAmount && !isNaN(newAmount)) {
+                expensesEntries[index].amount = parseFloat(newAmount);
+                updateExpensesList();
+                updateCalculations();
+                saveData(); // 儲存資料到 localStorage
+            }
+        }
+
+        function updateTotalWaterMoney() {
+            const total = waterMoneyEntries.reduce((sum, entry) => sum + entry.amount, 0);
+            document.getElementById('totalWaterMoney').textContent = total;
+        }
+
+        function updateTotalInsurance() {
+            const total = insuranceEntries.reduce((sum, entry) => sum + entry.amount, 0);
+            document.getElementById('totalInsurance').textContent = total;
+        }
+
+        function updateTotalExpenses() {
+            const total = expensesEntries.reduce((sum, entry) => sum + entry.amount, 0);
+            document.getElementById('totalExpenses').textContent = total;
+        }
+
+        function updateCalculations() {
+            const waterMoneyTotal = waterMoneyEntries.reduce((sum, entry) => sum + entry.amount, 0);
+            const insuranceTotal = insuranceEntries.reduce((sum, entry) => sum + entry.amount, 0);
+            const expensesTotal = expensesEntries.reduce((sum, entry) => sum + entry.amount, 0);
+
+            const dealerSalary = parseFloat(document.getElementById('dealerSalary').value) || 0;
+            const dealerTip = parseFloat(document.getElementById('dealerTip').value) || 0;
+            const bank = parseFloat(document.getElementById('bank').value) || 0; // 確保正確讀取
+            const service = parseFloat(document.getElementById('service').value) || 0; // 確保正確讀取
+            const venue = parseFloat(document.getElementById('venue').value) || 0; // 確保正確讀取
+
+            // 計算荷官的總收入
+            const totalDealerIncome = dealerSalary + dealerTip;
+            document.getElementById('totalDealerIncome').textContent = totalDealerIncome;
+
+            const totalBuyIn = players.reduce((sum, player) => sum + player.buyIn + player.additionalBuyIns.reduce((total, buyIn) => total + buyIn.amount, 0), 0);
+            const totalCashOut = players.reduce((sum, player) => sum + player.cashOut, 0);
+            const totalRebate = players.reduce((sum, player) => sum + player.rebates.reduce((total, rebate) => total + rebate.amount, 0), 0);
+
+            // 更新利潤計算
+            const profit = waterMoneyTotal - totalRebate - expensesTotal - dealerSalary - bank - service - venue; 
+            document.getElementById('profit').textContent = profit;
+            document.getElementById('profitCalculation').textContent = `${waterMoneyTotal} - ${totalRebate} - ${expensesTotal} - ${dealerSalary} - ${bank} - ${service} - ${venue}`;
+
+            const accountCheck = totalBuyIn - totalCashOut - waterMoneyTotal - insuranceTotal - dealerTip;
+            document.getElementById('accountCheck').textContent = accountCheck;
+            document.getElementById('accountCheckCalculation').textContent = `${totalBuyIn} - ${totalCashOut} - ${waterMoneyTotal} - ${insuranceTotal} - ${dealerTip}`;
+        }
+
+        function formatDate(date) {
+            return new Date(date).toLocaleString('zh-TW', {
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+        }
+
+        // 頁面加載時讀取數據
+        window.onload = loadData;
+    </script>
+</body>
+</html> 

@@ -8,13 +8,17 @@
 </head>
 <body>
     <div class="container">
+
         <h1>德州撲克玩家帳目紀錄</h1>
+        <div class="summary-link">
+            <a href="summary.html">查看玩家總結</a>
+        </div>
         <div class="player-form">
             <input type="text" id="playerName" placeholder="姓名">
-            <input type="number" id="buyIn" placeholder="總抓碼"> <!-- 修改为总抓码 -->
+            <input type="number" id="buyIn" placeholder="抓碼">
             <button onclick="addPlayer()">新增玩家</button>
         </div>
-        <button class="action-btn red" onclick="clearAllData()">清除所有資料</button> <!-- 新增清除資料按鈕 -->
+        <button class="action-btn red" onclick="clearAllData()">清除所有資料</button>
         <div class="player-list" id="playerList">
             <!-- 玩家資料會動態插入這裡 -->
         </div>
@@ -89,7 +93,9 @@
                             ${player.isPlaying ? '站起' : '坐下'}
                         </button>
                     </h3>
-                    <p class="note">備註: <input type="text" value="${player.note}" onchange="updateNote(${player.id}, this.value)" placeholder="備註"></p> <!-- 备注输入框 -->
+                    <p class="note">
+                        <input type="text" value="${player.note}" onchange="updateNote(${player.id}, this.value)" placeholder="備註">
+                    </p> <!-- 刪除備註標籤，只保留輸入框 -->
                     <p class="total-buyin" style="color: green;">總抓碼: $${totalBuyIn} (${formatDate(player.buyInTime)})</p>
                     <p class="cash-out" style="color: brown;">解碼: ${player.cashOut !== null ? `$${player.cashOut} (盈虧: $${profit})` : '尚未解碼'}</p>
                     <p id="playTime-${player.id}">入座時間: ${formatPlayTime(player)}</p>
@@ -192,7 +198,7 @@
                     saveData(); // 保存数据
                 }
             } else {
-                alert('請輸入有效的數字');
+                alert('請輸入有效的數');
             }
         }
 
