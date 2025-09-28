@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>抽獎系統</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎲 抽獎系統 🎲</h1>
+        </header>
+        
+        <div class="setup-section">
+            <h2>抽獎設定</h2>
+            
+            <div class="input-group">
+                <label for="minRange">最小數字：</label>
+                <input type="number" id="minRange" value="1" min="1">
+            </div>
+            
+            <div class="input-group">
+                <label for="maxRange">最大數字：</label>
+                <input type="number" id="maxRange" value="100" min="1">
+            </div>
+            
+            <div class="input-group">
+                <label>抽取數量：</label>
+                <span id="totalDrawCount" class="total-count-display">0</span>
+                <span style="color: #6c757d; font-size: 0.9em; margin-left: 10px;">(由獎項數量自動計算)</span>
+            </div>
+            
+            <div class="prizes-section">
+                <h3>獎項設定</h3>
+                <div class="prize-inputs" id="prizeInputs">
+                    <div class="prize-item">
+                        <input type="text" placeholder="獎項名稱" class="prize-name">
+                        <input type="number" placeholder="數量" class="prize-quantity" min="1" value="1">
+                        <button class="remove-prize" onclick="removePrize(this)">刪除</button>
+                    </div>
+                </div>
+                <button id="addPrize" class="add-prize-btn">+ 新增獎項</button>
+            </div>
+        </div>
+        
+        <div class="lottery-section">
+            <button id="startLottery" class="lottery-btn">開始抽獎</button>
+            <div id="lotteryDisplay" class="lottery-display">
+                <div id="numberDisplay" class="number-display">準備開始</div>
+                <div id="prizeDisplay" class="prize-display"></div>
+            </div>
+        </div>
+        
+        <div class="results-section">
+            <h3>抽獎結果</h3>
+            <div id="resultsList" class="results-list"></div>
+            <button id="clearResults" class="clear-btn">清除結果</button>
+        </div>
+    </div>
+    
+    <!-- 作弊功能面板 -->
+    <div id="cheatPanel" class="cheat-panel">
+        <div class="cheat-content">
+            <div class="cheat-header">
+                <h3>🎭 作弊模式</h3>
+                <button id="closeCheatPanel" class="close-btn">&times;</button>
+            </div>
+            <div class="cheat-body">
+                <p class="cheat-tip">💡 隱藏功能：按 Ctrl+Q、雙擊抽獎按鈕或輸入 "cheat" 開啟此面板</p>
+                
+                <div class="cheat-section">
+                    <h4>預設抽獎結果</h4>
+                    <div class="cheat-inputs" id="cheatInputs">
+                        <div class="cheat-item">
+                            <input type="number" placeholder="號碼" class="cheat-number" min="1">
+                            <input type="text" placeholder="獎項名稱" class="cheat-prize">
+                            <button class="remove-cheat" onclick="lotterySystem.removeCheatItem(this)">刪除</button>
+                        </div>
+                    </div>
+                    <button id="addCheatItem" class="add-cheat-btn">+ 新增作弊項目</button>
+                </div>
+                
+                <div class="cheat-actions">
+                    <button id="enableCheat" class="cheat-toggle-btn">啟用作弊模式</button>
+                    <button id="disableCheat" class="cheat-toggle-btn disabled">停用作弊模式</button>
+                    <button id="clearCheat" class="clear-cheat-btn">清除作弊設定</button>
+                </div>
+                
+                <div class="cheat-status">
+                    <span id="cheatStatus">作弊模式：已停用</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
