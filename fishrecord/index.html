@@ -112,9 +112,29 @@
     }
 
     .global-hole-title {
-      margin: 0 0 6px;
+      margin: 0;
       font-size: 18px;
       font-weight: 700;
+    }
+
+    .global-hole-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .global-hole-body {
+      display: grid;
     }
 
     .global-hole-open .hint {
@@ -251,6 +271,18 @@
       align-self: end;
     }
 
+    .toggle-btn {
+      background: #eef2f8;
+      color: var(--text);
+      padding: 7px 10px;
+      font-size: 13px;
+    }
+
+    .is-collapsed .global-hole-body,
+    .is-collapsed .hole-body {
+      display: none;
+    }
+
     @media (max-width: 760px) {
       .summary {
         grid-template-columns: 1fr;
@@ -314,7 +346,7 @@
           </div>
           <div>
             <span class="quotient-label">全機剩餘分數</span>
-            <span class="quotient-sublabel">（全機總開分×趴數÷100）−（財神總跳分數÷比值）</span>
+            <span class="quotient-sublabel">（趴數÷100）×［全機總開分＋（財神總跳分數÷比值）－全機總洗分］－（財神總跳分數÷比值）</span>
             <div class="quotient-value" id="grandRemaining">—</div>
           </div>
         </div>
@@ -322,12 +354,19 @@
     </section>
 
     <section class="global-hole-open" aria-label="全洞開分">
-      <h2 class="global-hole-title">全洞開分</h2>
-      <p class="hint">
-        可新增多筆；每一筆的開分會同步出現在 1～6 號洞同一列（財神／洗分可各洞自行填寫），方便一次輸入六洞相同開分。
-      </p>
-      <div id="globalBatchesList" class="global-batches-list"></div>
-      <button type="button" id="addGlobalBatchBtn" class="add-btn">新增一筆全洞開分</button>
+      <div class="global-hole-header">
+        <h2 class="global-hole-title">全洞開分</h2>
+        <div class="header-actions">
+          <button type="button" id="addGlobalBatchBtnHeader" class="add-btn">新增一筆全洞開分</button>
+          <button type="button" id="toggleGlobalSectionBtn" class="toggle-btn">收合</button>
+        </div>
+      </div>
+      <div id="globalSectionBody" class="global-hole-body">
+        <p class="hint">
+          可新增多筆；每一筆開分會同步套用到 1～6 號洞的總開分（財神／洗分可各洞自行填寫）。
+        </p>
+        <div id="globalBatchesList" class="global-batches-list"></div>
+      </div>
     </section>
 
     <div id="holes"></div>
@@ -349,7 +388,10 @@
     const openPaiShuResultEl = document.getElementById("openPaiShuResult");
     const grandRemainingEl = document.getElementById("grandRemaining");
     const globalBatchesList = document.getElementById("globalBatchesList");
-    const addGlobalBatchBtn = document.getElementById("addGlobalBatchBtn");
+    const addGlobalBatchBtnHeader = document.getElementById("addGlobalBatchBtnHeader");
+    const globalSectionEl = document.querySelector(".global-hole-open");
+    const globalSectionBody = document.getElementById("globalSectionBody");
+    const toggleGlobalSectionBtn = document.getElementById("toggleGlobalSectionBtn");
 
     let globalBatches = [];
 
@@ -395,14 +437,6 @@
     function getCurrentData() {
       return Array.from(document.querySelectorAll(".hole")).map((holeEl) => {
         const rows = Array.from(holeEl.querySelectorAll(".row")).map((rowEl) => {
-          if (rowEl.classList.contains("batch-open-row")) {
-            return {
-              batchId: rowEl.dataset.batchId,
-              fortune: toNumber(rowEl.querySelector(".fortune-input").value),
-              wash: toNumber(rowEl.querySelector(".wash-input").value),
-              burstRed: toNumber(rowEl.querySelector(".burst-red-input").value),
-            };
-          }
           return {
             open: toNumber(rowEl.querySelector(".open-input").value),
             fortune: toNumber(rowEl.querySelector(".fortune-input").value),
@@ -502,8 +536,21 @@
       updateAllTotals();
     });
 
-    addGlobalBatchBtn.addEventListener("click", () => {
+    addGlobalBatchBtnHeader.addEventListener("click", () => {
+      if (globalSectionEl.classList.contains("is-collapsed")) {
+        setCollapsed(globalSectionEl, toggleGlobalSectionBtn, false);
+      }
       addGlobalBatch();
+    });
+
+    function setCollapsed(sectionEl, buttonEl, collapsed) {
+      sectionEl.classList.toggle("is-collapsed", collapsed);
+      buttonEl.textContent = collapsed ? "展開" : "收合";
+    }
+
+    toggleGlobalSectionBtn.addEventListener("click", () => {
+      const collapsed = !globalSectionEl.classList.contains("is-collapsed");
+      setCollapsed(globalSectionEl, toggleGlobalSectionBtn, collapsed);
     });
 
     function newBatchId() {
@@ -517,9 +564,7 @@
       }
       const display = String(toNumber(value));
       document
-        .querySelectorAll(
-          `.batch-open-row[data-batch-id="${batchId}"] .open-input, .global-batch-editor[data-batch-id="${batchId}"] .open-input`,
-        )
+        .querySelectorAll(`.global-batch-editor[data-batch-id="${batchId}"] .open-input`)
         .forEach((el) => {
           if (el !== skipElement) {
             el.value = display;
@@ -571,78 +616,22 @@
 
     function removeBatch(batchId) {
       globalBatches = globalBatches.filter((b) => b.id !== batchId);
-      document.querySelectorAll(`.batch-open-row[data-batch-id="${batchId}"]`).forEach((el) => {
-        el.remove();
-      });
       renderGlobalBatchList();
       updateAllTotals();
-    }
-
-    function buildBatchLinkedRow(batch, rowData = { fortune: 0, wash: 0, burstRed: 0 }) {
-      const row = document.createElement("div");
-      row.className = "row batch-open-row";
-      row.dataset.batchId = batch.id;
-
-      const openLabel = document.createElement("label");
-      openLabel.textContent = "開分";
-      const openField = document.createElement("input");
-      openField.type = "number";
-      openField.step = "1";
-      openField.className = "open-input";
-      openField.value = String(toNumber(batch.open));
-      openField.addEventListener("input", (e) => {
-        setBatchOpen(batch.id, toNumber(e.target.value), e.target);
-        updateAllTotals();
-      });
-      openLabel.appendChild(openField);
-
-      const fortuneInput = createInput("財神跳分數", "fortune-input");
-      const washInput = createInput("洗分", "wash-input");
-      const burstInput = createInput("爆機紅包", "burst-red-input");
-      fortuneInput.querySelector(".fortune-input").value = String(toNumber(rowData.fortune));
-      washInput.querySelector(".wash-input").value = String(toNumber(rowData.wash));
-      burstInput.querySelector(".burst-red-input").value = String(toNumber(rowData.burstRed));
-
-      const createdAtIso = batch.createdAt || null;
-      if (createdAtIso) {
-        row.dataset.createdAt = createdAtIso;
-      }
-
-      const timeEl = document.createElement("div");
-      timeEl.className = "row-created-at";
-      timeEl.textContent = formatRowCreatedAt(createdAtIso);
-
-      const note = document.createElement("div");
-      note.className = "batch-sync-note";
-      note.textContent = "全洞";
-
-      row.appendChild(openLabel);
-      row.appendChild(fortuneInput);
-      row.appendChild(washInput);
-      row.appendChild(burstInput);
-      row.appendChild(timeEl);
-      row.appendChild(note);
-      return row;
-    }
-
-    function appendBatchRowToHole(rowsContainer, batch, rowData) {
-      const firstManual = rowsContainer.querySelector(".row:not(.batch-open-row)");
-      const rowEl = buildBatchLinkedRow(batch, rowData);
-      if (firstManual) {
-        rowsContainer.insertBefore(rowEl, firstManual);
-      } else {
-        rowsContainer.appendChild(rowEl);
-      }
     }
 
     function addGlobalBatch() {
       const batch = { id: newBatchId(), open: 0, createdAt: nowIso() };
       globalBatches.push(batch);
       renderGlobalBatchList();
-      document.querySelectorAll(".hole .rows").forEach((rowsContainer) => {
-        appendBatchRowToHole(rowsContainer, batch, { fortune: 0, wash: 0, burstRed: 0 });
-      });
       updateAllTotals();
+      const newInput = globalBatchesList?.querySelector(
+        `.global-batch-editor[data-batch-id="${batch.id}"] .open-input`,
+      );
+      if (newInput) {
+        newInput.focus();
+        newInput.select();
+      }
     }
 
     function addRow(rowsContainer, rowData) {
@@ -714,40 +703,56 @@
       header.appendChild(title);
       header.appendChild(totals);
 
+      const toggleButton = document.createElement("button");
+      toggleButton.type = "button";
+      toggleButton.className = "toggle-btn";
+      toggleButton.textContent = "收合";
+      toggleButton.addEventListener("click", () => {
+        const collapsed = !section.classList.contains("is-collapsed");
+        setCollapsed(section, toggleButton, collapsed);
+      });
+
+      const addButtonHeader = document.createElement("button");
+      addButtonHeader.type = "button";
+      addButtonHeader.className = "add-btn";
+      addButtonHeader.textContent = "新增一筆";
+      addButtonHeader.addEventListener("click", () => {
+        if (section.classList.contains("is-collapsed")) {
+          setCollapsed(section, toggleButton, false);
+        }
+        addRow(rowsContainer);
+        updateAllTotals();
+        const lastRow = rowsContainer.lastElementChild;
+        const firstInput = lastRow?.querySelector(".open-input");
+        if (firstInput) {
+          firstInput.focus();
+          firstInput.select();
+        }
+      });
+
+      const headerActions = document.createElement("div");
+      headerActions.className = "header-actions";
+      headerActions.appendChild(addButtonHeader);
+      headerActions.appendChild(toggleButton);
+      header.appendChild(headerActions);
+
       const rowsContainer = document.createElement("div");
       rowsContainer.className = "rows";
 
-      const addButton = document.createElement("button");
-      addButton.type = "button";
-      addButton.className = "add-btn";
-      addButton.textContent = "新增一筆開分/財神跳分數/洗分/爆機紅包";
-      addButton.addEventListener("click", () => {
-        addRow(rowsContainer);
-        updateAllTotals();
-      });
+      const body = document.createElement("div");
+      body.className = "hole-body";
+      body.appendChild(rowsContainer);
 
       section.appendChild(header);
-      section.appendChild(rowsContainer);
-      section.appendChild(addButton);
+      section.appendChild(body);
       holesContainer.appendChild(section);
     }
 
     function renderHoleRows(rowsContainer, holeData) {
       rowsContainer.innerHTML = "";
       const savedRows = Array.isArray(holeData?.rows) ? holeData.rows : [];
-
-      globalBatches.forEach((batch) => {
-        const saved = savedRows.find((r) => r && r.batchId === batch.id);
-        appendBatchRowToHole(rowsContainer, batch, {
-          fortune: saved?.fortune ?? 0,
-          wash: saved?.wash ?? 0,
-          burstRed: saved?.burstRed ?? 0,
-        });
-      });
-
-      const manualRows = savedRows.filter((r) => r && !r.batchId);
-      if (manualRows.length > 0) {
-        manualRows.forEach((row) => addRow(rowsContainer, row));
+      if (savedRows.length > 0) {
+        savedRows.forEach((row) => addRow(rowsContainer, row));
       }
     }
 
@@ -769,6 +774,10 @@
         let holeFortune = 0;
         let holeBurstRed = 0;
         let holeWash = 0;
+
+        globalBatches.forEach((batch) => {
+          holeOpen += toNumber(batch.open);
+        });
 
         holeEl.querySelectorAll(".open-input").forEach((input) => {
           holeOpen += toNumber(input.value);
@@ -836,7 +845,10 @@
       ) {
         grandRemainingEl.textContent = "—";
       } else {
-        grandRemainingEl.textContent = formatQuotient(openPaiNum - fortuneQuotientNum);
+        const pai = toNumber(paiRaw);
+        const remaining =
+          (pai / 100) * (grandOpen + fortuneQuotientNum - grandWash) - fortuneQuotientNum;
+        grandRemainingEl.textContent = formatQuotient(remaining);
       }
 
       saveData();
