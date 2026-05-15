@@ -41,6 +41,39 @@
       color: var(--muted);
     }
 
+    .desc-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .desc-toolbar .desc {
+      flex: 1 1 240px;
+      margin: 0;
+      min-width: 0;
+    }
+
+    /* 位子數量：文字欄避免與 number 捲輪誤觸；須按「確認」才套用 */
+    .hole-count-field {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 8px 10px;
+      margin: 0 0 10px;
+    }
+
+    .hole-count-field label {
+      flex: 1 1 140px;
+      min-width: 0;
+    }
+
+    #holeCountInput.hole-count-input {
+      max-width: 100px;
+    }
+
     .summary {
       display: grid;
       grid-template-columns: repeat(3, minmax(220px, 1fr));
@@ -235,7 +268,8 @@
       font-weight: 600;
     }
 
-    input[type="number"] {
+    input[type="number"],
+    #holeCountInput.hole-count-input {
       width: 100%;
       border: 1px solid var(--border);
       border-radius: 8px;
@@ -246,7 +280,8 @@
       background: #fff;
     }
 
-    input[type="number"]:focus {
+    input[type="number"]:focus,
+    #holeCountInput.hole-count-input:focus {
       border-color: var(--primary);
       box-shadow: 0 0 0 2px rgba(44, 123, 229, 0.15);
     }
@@ -297,11 +332,31 @@
 <body>
   <div class="container">
     <h1>魚機分數紀錄</h1>
-    <p class="desc">每個洞都可新增多筆開分與洗分，系統會自動計算各洞總分與全機總分。</p>
+    <div class="desc-toolbar">
+      <p class="desc">每個洞都可新增多筆開分與洗分，系統會自動計算各洞總分與全機總分。</p>
+      <button type="button" id="exportExcelBtn" class="toggle-btn">匯出 Excel</button>
+    </div>
 
     <section class="summary">
       <div class="summary-card">
         <h2>全機總開分</h2>
+        <div class="hole-count-field" aria-label="機台位子數量">
+          <label>
+            機台位子數量
+            <input
+              type="text"
+              id="holeCountInput"
+              class="hole-count-input"
+              inputmode="numeric"
+              maxlength="3"
+              autocomplete="off"
+              autocorrect="off"
+              spellcheck="false"
+              value="6"
+            />
+          </label>
+          <button type="button" id="applyHoleCountBtn" class="add-btn">確認</button>
+        </div>
         <div class="value" id="grandOpen">0</div>
         <div class="ratio-block">
           <div>
@@ -362,7 +417,7 @@
         </div>
       </div>
       <div id="globalSectionBody" class="global-hole-body">
-        <p class="hint">
+        <p id="globalOpenHint" class="hint">
           可新增多筆；每一筆開分會同步套用到 1～6 號洞的總開分（財神／洗分可各洞自行填寫）。
         </p>
         <div id="globalBatchesList" class="global-batches-list"></div>
@@ -372,8 +427,8 @@
     <div id="holes"></div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script>
-    const holeCount = 6;
     const STORAGE_KEY = "fishrecord.v1";
     const holesContainer = document.getElementById("holes");
     const grandOpenEl = document.getElementById("grandOpen");
@@ -392,12 +447,39 @@
     const globalSectionEl = document.querySelector(".global-hole-open");
     const globalSectionBody = document.getElementById("globalSectionBody");
     const toggleGlobalSectionBtn = document.getElementById("toggleGlobalSectionBtn");
+    const holeCountInput = document.getElementById("holeCountInput");
+    const applyHoleCountBtn = document.getElementById("applyHoleCountBtn");
+    const exportExcelBtn = document.getElementById("exportExcelBtn");
 
     let globalBatches = [];
+    let holeCount = 6;
 
     function toNumber(value) {
       const num = Number(value);
       return Number.isFinite(num) ? num : 0;
+    }
+
+    /** @returns {number} */
+    function clampHoleCount(raw) {
+      const n = Math.floor(toNumber(raw));
+      if (!Number.isFinite(n) || n < 1) {
+        return 1;
+      }
+      if (n > 99) {
+        return 99;
+      }
+      return n;
+    }
+
+    function rangeLabelForHoleCount() {
+      return holeCount <= 1 ? "1號洞" : `1～${holeCount}號洞`;
+    }
+
+    function updateGlobalOpenHintText() {
+      const el = document.getElementById("globalOpenHint");
+      if (el) {
+        el.textContent = `可新增多筆；每一筆開分會同步套用到 ${rangeLabelForHoleCount()} 的總開分（財神／洗分可各洞自行填寫）。`;
+      }
     }
 
     function formatQuotient(value) {
@@ -434,14 +516,128 @@
       });
     }
 
+    function padExportNum(v) {
+      return String(v).padStart(2, "0");
+    }
+
+    function exportExcelFileName() {
+      const d = new Date();
+      return `魚機分數紀錄_${d.getFullYear()}${padExportNum(d.getMonth() + 1)}${padExportNum(
+        d.getDate(),
+      )}_${padExportNum(d.getHours())}${padExportNum(d.getMinutes())}${padExportNum(
+        d.getSeconds(),
+      )}.xlsx`;
+    }
+
+    function exportFishRecordExcel() {
+      const XLSX = globalThis.XLSX;
+      if (!XLSX || typeof XLSX.utils?.book_new !== "function") {
+        window.alert("無法載入 Excel 產生元件，請確認網路可連線至 CDN 後重新整理頁面。");
+        return;
+      }
+
+      const exportedAt = formatRowCreatedAt(nowIso());
+
+      const summaryAoa = [
+        ["魚機分數紀錄／摘要"],
+        [],
+        ["匯出時間", exportedAt],
+        ["機台位子數量", holeCount],
+        ["比值輸入", fortuneRatioInput?.value?.trim() || "—"],
+        ["趴數輸入", openPaiShuInput?.value?.trim() || "—"],
+        [],
+        ["全機總開分", toNumber(grandOpenEl?.textContent)],
+        ["全機財神總跳分數", toNumber(grandFortuneEl?.textContent)],
+        ["全機爆機紅包總分", toNumber(grandBurstRedEl?.textContent)],
+        ["全機總洗分", toNumber(grandWashEl?.textContent)],
+        ["目前輸贏(不含爆機)", grandWinLossNoBurstEl?.textContent?.trim() ?? "—"],
+        ["目前輸贏(含爆機)", grandWinLossWithBurstEl?.textContent?.trim() ?? "—"],
+        ["財神總跳分數÷比值", fortuneQuotientEl?.textContent?.trim() ?? "—"],
+        ["全機總開分×趴數÷100", openPaiShuResultEl?.textContent?.trim() ?? "—"],
+        ["全機剩餘分數", grandRemainingEl?.textContent?.trim() ?? "—"],
+      ];
+
+      const globalAoa = [
+        ["全洞開分（每筆同步至全部洞之開分累加）"],
+        [],
+        ["序號", "開分", "新增時間_ISO", "新增時間(畫面顯示)"],
+      ];
+      globalBatches.forEach((b, idx) => {
+        const iso =
+          typeof b.createdAt === "string" && b.createdAt.length > 0 ? b.createdAt : "";
+        globalAoa.push([idx + 1, toNumber(b.open), iso, iso ? formatRowCreatedAt(iso) : "—"]);
+      });
+
+      const detailAoa = [
+        ["各洞明細（不含全洞開分累加—與頁面每筆欄位一致）"],
+        [],
+        ["洞號", "筆序", "開分", "財神跳分數", "洗分", "爆機紅包", "新增時間_ISO", "新增時間(畫面顯示)"],
+      ];
+      const holesSnapshot = getCurrentData();
+      holesSnapshot.forEach((holeData, hi) => {
+        const holeNum = hi + 1;
+        const rows = Array.isArray(holeData.rows) ? holeData.rows : [];
+        rows.forEach((row, ri) => {
+          const iso = typeof row.createdAt === "string" ? row.createdAt : "";
+          detailAoa.push([
+            holeNum,
+            ri + 1,
+            row.open,
+            row.fortune,
+            row.wash,
+            row.burstRed,
+            iso,
+            iso ? formatRowCreatedAt(iso) : "—",
+          ]);
+        });
+      });
+
+      const subtotalAoa = [
+        ["各洞小計（含全洞開分累加後之總計，與頁面標題列一致）"],
+        [],
+        ["洞號", "總開分", "財神總跳分數", "爆機紅包總分", "總洗分"],
+      ];
+      const holeSections = document.getElementById("holes")?.querySelectorAll?.(".hole") ?? [];
+      holeSections.forEach((holeEl) => {
+        const n = holeEl.dataset.hole;
+        subtotalAoa.push([
+          n !== undefined && n !== "" ? n : "",
+          toNumber(holeEl.querySelector(".open-total")?.textContent),
+          toNumber(holeEl.querySelector(".fortune-total")?.textContent),
+          toNumber(holeEl.querySelector(".burst-red-total")?.textContent),
+          toNumber(holeEl.querySelector(".wash-total")?.textContent),
+        ]);
+      });
+
+      const wb = XLSX.utils.book_new();
+
+      const wsSummary = XLSX.utils.aoa_to_sheet(summaryAoa);
+      const wsGlobal = XLSX.utils.aoa_to_sheet(globalAoa);
+      const wsDetail = XLSX.utils.aoa_to_sheet(detailAoa);
+      const wsSub = XLSX.utils.aoa_to_sheet(subtotalAoa);
+
+      XLSX.utils.book_append_sheet(wb, wsSummary, "摘要");
+      XLSX.utils.book_append_sheet(wb, wsGlobal, "全洞開分");
+      XLSX.utils.book_append_sheet(wb, wsDetail, "各洞明細");
+      XLSX.utils.book_append_sheet(wb, wsSub, "各洞小計");
+
+      XLSX.writeFile(wb, exportExcelFileName());
+    }
+
     function getCurrentData() {
-      return Array.from(document.querySelectorAll(".hole")).map((holeEl) => {
-        const rows = Array.from(holeEl.querySelectorAll(".row")).map((rowEl) => {
+      return Array.from(holesContainer.querySelectorAll(".hole")).map((holeEl) => {
+        const rowsWrap = holeEl.querySelector(".hole-body .rows");
+        const rowEls = rowsWrap
+          ? Array.from(rowsWrap.children).filter(
+              (el) => el.nodeType === 1 && el.classList.contains("row"),
+            )
+          : [];
+        const rows = rowEls.map((rowEl) => {
           return {
-            open: toNumber(rowEl.querySelector(".open-input").value),
-            fortune: toNumber(rowEl.querySelector(".fortune-input").value),
-            wash: toNumber(rowEl.querySelector(".wash-input").value),
-            burstRed: toNumber(rowEl.querySelector(".burst-red-input").value),
+            open: toNumber(rowEl.querySelector(".open-input")?.value),
+            fortune: toNumber(rowEl.querySelector(".fortune-input")?.value),
+            wash: toNumber(rowEl.querySelector(".wash-input")?.value),
+            burstRed: toNumber(rowEl.querySelector(".burst-red-input")?.value),
             createdAt: rowEl.dataset.createdAt || null,
           };
         });
@@ -456,6 +652,7 @@
       const openPaiShu = paiRaw === "" ? null : toNumber(paiRaw);
       const payload = {
         version: 1,
+        holeCount,
         holes: getCurrentData(),
         fortuneRatio,
         openPaiShu,
@@ -495,6 +692,10 @@
         const parsed = JSON.parse(raw);
         if (!parsed || !Array.isArray(parsed.holes)) return null;
         return {
+          holeCount:
+            parsed.holeCount === undefined || parsed.holeCount === null
+              ? undefined
+              : Number(parsed.holeCount),
           holes: parsed.holes,
           fortuneRatio:
             parsed.fortuneRatio === undefined || parsed.fortuneRatio === null
@@ -534,6 +735,33 @@
 
     openPaiShuInput.addEventListener("input", () => {
       updateAllTotals();
+    });
+
+    function applyHoleCountFromInput() {
+      const trimmed = holeCountInput.value.replace(/\D/g, "").slice(0, 3);
+      if (holeCountInput.value !== trimmed) {
+        holeCountInput.value = trimmed;
+      }
+      if (trimmed === "") {
+        holeCountInput.value = String(holeCount);
+        return;
+      }
+      setHoleCountAndRebuild(trimmed);
+    }
+
+    holeCountInput.addEventListener("input", () => {
+      const digits = holeCountInput.value.replace(/\D/g, "").slice(0, 3);
+      if (holeCountInput.value !== digits) {
+        holeCountInput.value = digits;
+      }
+    });
+
+    applyHoleCountBtn.addEventListener("click", () => {
+      applyHoleCountFromInput();
+    });
+
+    exportExcelBtn.addEventListener("click", () => {
+      exportFishRecordExcel();
     });
 
     addGlobalBatchBtnHeader.addEventListener("click", () => {
@@ -583,7 +811,7 @@
         row.dataset.batchId = batch.id;
 
         const openLabel = document.createElement("label");
-        openLabel.textContent = "開分（同步至 1～6 號洞）";
+        openLabel.textContent = `開分（同步至 ${rangeLabelForHoleCount()}）`;
         const openField = document.createElement("input");
         openField.type = "number";
         openField.step = "1";
@@ -763,6 +991,23 @@
       renderHoleRows(rowsContainer, holeData);
     }
 
+    function setHoleCountAndRebuild(nextRaw) {
+      const next = clampHoleCount(nextRaw);
+      holeCountInput.value = String(next);
+      if (next === holeCount) {
+        return;
+      }
+      const prevSnapshot = getCurrentData();
+      holeCount = next;
+      holesContainer.innerHTML = "";
+      for (let i = 1; i <= holeCount; i += 1) {
+        createHoleWithData(i, prevSnapshot[i - 1]);
+      }
+      updateGlobalOpenHintText();
+      renderGlobalBatchList();
+      updateAllTotals();
+    }
+
     function updateAllTotals() {
       let grandOpen = 0;
       let grandFortune = 0;
@@ -856,10 +1101,20 @@
 
     const saved = loadData();
     globalBatches = saved?.globalBatches ?? [];
-    const savedHoles = saved?.holes ?? null;
+    const savedHoles = Array.isArray(saved?.holes) ? saved.holes : [];
+    holeCount =
+      saved?.holeCount !== undefined &&
+      saved.holeCount !== null &&
+      Number.isFinite(Number(saved.holeCount))
+        ? clampHoleCount(Number(saved.holeCount))
+        : 6;
+    holeCountInput.value = String(holeCount);
+
+    holesContainer.innerHTML = "";
     for (let i = 1; i <= holeCount; i += 1) {
-      createHoleWithData(i, savedHoles?.[i - 1]);
+      createHoleWithData(i, savedHoles[i - 1]);
     }
+    updateGlobalOpenHintText();
     renderGlobalBatchList();
     if (saved?.fortuneRatio != null && Number.isFinite(saved.fortuneRatio)) {
       fortuneRatioInput.value = String(saved.fortuneRatio);
